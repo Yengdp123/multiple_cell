@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:assets_audio_player/assets_audio_player.dart';
+import 'game_screen.dart'; // Import the GameScreen
 
 void main() {
   runApp(MyApp());
@@ -27,9 +28,9 @@ class ThirdScreen extends StatefulWidget {
 class _ThirdScreenState extends State<ThirdScreen> with SingleTickerProviderStateMixin {
   late final AnimationController _animationController;
   late final Animation<double> _scaleAnimation;
-  final AssetsAudioPlayer _audioPlayer = AssetsAudioPlayer(); // Create an AssetsAudioPlayer instance
+  final AssetsAudioPlayer _audioPlayer = AssetsAudioPlayer();
   int cellCount = 1; // Start with one cell
-  bool isGameCompleted = false; // Tracks game session completion
+  bool hasDivideCellButtonBeenUsed = false; // Tracks if the "Divide Cell" button has been used
 
   @override
   void initState() {
@@ -39,7 +40,6 @@ class _ThirdScreenState extends State<ThirdScreen> with SingleTickerProviderStat
       duration: const Duration(seconds: 1),
     );
 
-    // Define a scaling animation
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.5).animate(
       CurvedAnimation(
         parent: _animationController,
@@ -47,12 +47,10 @@ class _ThirdScreenState extends State<ThirdScreen> with SingleTickerProviderStat
       ),
     );
 
-    // Add a listener to update the UI after animation ends
     _animationController.addStatusListener((status) {
-      if (status == AnimationStatus.completed && isGameCompleted) {
+      if (status == AnimationStatus.completed) {
         setState(() {
-          cellCount++; // Increment cell count
-          isGameCompleted = false; // Reset game completion status
+          cellCount++; // Increment cell count after the animation
         });
       }
     });
@@ -61,27 +59,44 @@ class _ThirdScreenState extends State<ThirdScreen> with SingleTickerProviderStat
   @override
   void dispose() {
     _animationController.dispose();
-    _audioPlayer.dispose(); // Dispose the audio player instance
+    _audioPlayer.dispose();
     super.dispose();
   }
 
-  // Function to play the button click sound
   void _playButtonClickSound() {
     _audioPlayer.open(
-      Audio("assetss/animations/Tap.mp3"), // Specify the audio file
-      autoStart: true, // Start playing automatically
-      showNotification: false, // Don't show notification
+      Audio("assetss/animations/Tap.mp3"),
+      autoStart: true,
+      showNotification: false,
     );
   }
 
-  // Simulating game session completion
-  void completeGameSession() {
-    setState(() {
-      isGameCompleted = true; // Mark the game session as completed
-    });
-    _playButtonClickSound(); // Play sound when button is clicked
-    _animationController.reset();
-    _animationController.forward(); // Trigger the multiplication animation
+  void divideCell() {
+    if (!hasDivideCellButtonBeenUsed) {
+      setState(() {
+        hasDivideCellButtonBeenUsed = true; // Mark the button as used
+      });
+      _playButtonClickSound(); // Play sound effect
+      _animationController.reset();
+      _animationController.forward(); // Start the scaling animation
+    }
+  }
+
+  void continueAnotherSession() {
+    _playButtonClickSound(); // Play sound effect for "Continue Another Session"
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GameScreen(
+          onFinishGame: () {
+            // When "Finish Game" is pressed, reset the "Divide Cell" button
+            setState(() {
+              hasDivideCellButtonBeenUsed = false;
+            });
+          },
+        ),
+      ), // Navigate to GameScreen
+    );
   }
 
   @override
@@ -111,9 +126,7 @@ class _ThirdScreenState extends State<ThirdScreen> with SingleTickerProviderStat
                       animation: _scaleAnimation,
                       builder: (context, child) {
                         return Transform.scale(
-                          scale: (index == cellCount - 1 && isGameCompleted)
-                              ? _scaleAnimation.value
-                              : 1.0, // Scale only the latest cell during animation
+                          scale: (index == cellCount - 1) ? _scaleAnimation.value : 1.0,
                           child: Lottie.asset(
                             'assetss/animations/cellwiggle.json',
                             width: 100,
@@ -125,63 +138,38 @@ class _ThirdScreenState extends State<ThirdScreen> with SingleTickerProviderStat
                   }),
                 ),
                 const SizedBox(height: 20),
-                if (cellCount > 1) ...[
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: hasDivideCellButtonBeenUsed
+                        ? Colors.grey // Disabled state
+                        : Colors.blue, // Active state
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    onPressed: () {
-                      _playButtonClickSound(); // Play sound when button is clicked
-                      // Placeholder for Home functionality
-                      print("Home button pressed (not yet connected)");
-                    },
-                    child: const Text(
-                      'HOME',
-                      style: TextStyle(fontSize: 18, color: Colors.white),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                   ),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                    ),
-                    onPressed: () {
-                      _playButtonClickSound(); // Play sound when button is clicked
-                      // Placeholder for Continue Session functionality
-                      print("Continue Session button pressed (not yet connected)");
-                    },
-                    child: const Text(
-                      'CONTINUE SESSION',
-                      style: TextStyle(fontSize: 18, color: Colors.white),
-                    ),
+                  onPressed:
+                  hasDivideCellButtonBeenUsed ? null : divideCell, // Disable button permanently if clicked
+                  child: const Text(
+                    'DIVIDE CELL', // Button label
+                    style: TextStyle(fontSize: 18, color: Colors.white),
                   ),
-                ],
-                if (cellCount == 1)
-                  ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                ),
+                const SizedBox(height: 10),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                    onPressed: () {
-                      _playButtonClickSound(); // Play sound when button is clicked
-                      completeGameSession();
-                    },
-                    child: const Text(
-                      'COMPLETE SESSION',
-                      style: TextStyle(fontSize: 18, color: Colors.black),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                   ),
+                  onPressed: continueAnotherSession, // Action for the "Continue Another Session" button
+                  child: const Text(
+                    'CONTINUE ANOTHER SESSION', // Button label
+                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  ),
+                ),
               ],
             ),
           ),
